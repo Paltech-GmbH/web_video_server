@@ -207,10 +207,12 @@ bool WebVideoServer::handle_stream(const async_web_server_cpp::HttpRequest &requ
         type = "mjpeg";
       }
     }
-    boost::shared_ptr<ImageStreamer> streamer = stream_types_[type]->create_streamer(request, connection, nh_);
-    streamer->start();
-    boost::mutex::scoped_lock lock(subscriber_mutex_);
-    image_subscribers_.push_back(streamer);
+    if (topic.find("resized_stream") != std::string::npos) {
+      boost::shared_ptr<ImageStreamer> streamer = stream_types_[type]->create_streamer(request, connection, nh_);
+      streamer->start();
+      boost::mutex::scoped_lock lock(subscriber_mutex_);
+      image_subscribers_.push_back(streamer);
+    }
   }
   else
   {
@@ -268,12 +270,14 @@ bool WebVideoServer::handle_stream_viewer(const async_web_server_cpp::HttpReques
     async_web_server_cpp::HttpReply::builder(async_web_server_cpp::HttpReply::ok).header("Connection", "close").header(
         "Server", "web_video_server").header("Content-type", "text/html;").write(connection);
 
-    std::stringstream ss;
-    ss << "<html><head><title>" << topic << "</title></head><body>";
-    ss << "<h1>" << topic << "</h1>";
-    ss << stream_types_[type]->create_viewer(request);
-    ss << "</body></html>";
-    connection->write(ss.str());
+    if (topic.find("resized_stream") != std::string::npos) {
+      std::stringstream ss;
+      ss << "<html><head><title>" << topic << "</title></head><body>";
+      ss << "<h1>" << topic << "</h1>";
+      ss << stream_types_[type]->create_viewer(request);
+      ss << "</body></html>";
+      connection->write(ss.str());
+    }
   }
   else
   {
@@ -299,11 +303,11 @@ bool WebVideoServer::handle_list_streams(const async_web_server_cpp::HttpRequest
     auto & topic_type = topic_and_types.second[0];  // explicitly take the first
     // TODO debugging
     fprintf(stderr, "topic_type: %s\n", topic_type.c_str());
-    if (topic_type == "sensor_msgs/msg/Image")
+    if (topic_type == "sensor_msgs/msg/Image" && topic_name.find("resized_stream") != std::string::npos)
     {
       image_topics.push_back(topic_name);
     }
-    else if (topic_type == "sensor_msgs/msg/CameraInfo")
+    else if (topic_type == "sensor_msgs/msg/CameraInfo" && topic_name.find("resized_stream") != std::string::npos)
     {
       camera_info_topics.push_back(topic_name);
     }
