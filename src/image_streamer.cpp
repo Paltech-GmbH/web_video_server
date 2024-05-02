@@ -1,6 +1,8 @@
 #include "web_video_server/image_streamer.h"
 #include <cv_bridge/cv_bridge.h>
 #include <iostream>
+#include <image_transport/image_transport.hpp>
+#include <image_transport/transport_hints.hpp>
 
 namespace web_video_server
 {
@@ -46,7 +48,9 @@ void ImageTransportImageStreamer::start()
       continue;
     }
   }
-  image_sub_ = it_.subscribe(topic_, 1, &ImageTransportImageStreamer::imageCallback, this, &hints);
+  rmw_qos_profile_t image_qos = rmw_qos_profile_sensor_data;
+  // image_sub_ = it_.subscribe(topic_, 1, &ImageTransportImageStreamer::imageCallback, this, &hints);
+  image_sub_ = image_transport::create_subscription(nh_.get(), topic_, std::bind(&ImageTransportImageStreamer::imageCallback, this, std::placeholders::_1), "raw", image_qos);
 }
 
 void ImageTransportImageStreamer::initialize(const cv::Mat &)
